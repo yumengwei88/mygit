@@ -1,0 +1,15 @@
+[project]
+name = "mygit"
+version = "0.1.0"
+description = "A minimal Git implementation, built from scratch to learn how Git works internally"
+requires-python = ">=3.8"
+
+[project.scripts]
+mygit = "mygit.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["mygit*"]
