@@ -5,6 +5,7 @@ import sys
 
 from . import objects
 from . import repository
+from . import tree
 
 
 def cmd_init(args):
@@ -55,6 +56,16 @@ def cmd_cat_file(args):
         print("error: must specify -t, -s, or -p", file=sys.stderr)
         sys.exit(1)
 
+# Phase 2
+def cmd_write_tree(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    sha = tree.write_tree(repo, args.path)
+    print(sha)
 
 def main():
     parser = argparse.ArgumentParser(prog="mygit", description="A minimal Git implementation")
@@ -82,6 +93,16 @@ def main():
     group.add_argument("-s", dest="size", action="store_true", help="show object size")
     group.add_argument("-p", dest="pretty", action="store_true", help="pretty-print object content")
     p_cat.set_defaults(func=cmd_cat_file)
+
+    # Phase 2 begins
+    p_write_tree = subparsers.add_parser("write-tree", help="snapshot a directory into a tree object")
+    p_write_tree.add_argument(
+        "path", nargs="?", default=".",
+        help="directory to snapshot (default: current directory)"
+    )
+    p_write_tree.set_defaults(func=cmd_write_tree)
+
+    # Phase 2 end
 
     args = parser.parse_args()
     args.func(args)
