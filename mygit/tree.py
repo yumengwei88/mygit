@@ -32,3 +32,19 @@ def write_tree(repo: str, path: str = ".") -> str:
 
     tree_content = ("\n".join(entries) + "\n").encode() if entries else b""
     return objects.hash_object(tree_content, "tree", repo=repo, write=True)
+
+
+def parse_tree(content: bytes):
+    """Parse a tree object's raw content into a lits of entry dicts"""
+
+    entries = []
+    text = content.decode()
+
+    for line in text.splitlines():
+        if not line:
+            continue
+        meta, name = line.split("\t")
+        mode, obj_type, sha = meta.split(" ")
+        entries.append({"mode": mode, "type": obj_type, "sha": sha, "name": name})
+
+    return entries

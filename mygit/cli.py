@@ -33,6 +33,27 @@ def cmd_hash_object(args):
     print(sha)
 
 
+def cmd_ls_tree(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        obj_type, content = objects.read_object(repo, args.sha)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if obj_type != "tree":
+        print(f"error: objext {args.sha} is not a tree, it's a {obj_type}", file = sys.stderr)
+        sys.exit(1)
+
+    for entry in tree.parse_tree(content):
+        print(f"{entry['mode']} {entry['type']} {entry['sha']}\t{entry['name']}")
+
+
 def cmd_cat_file(args):
     try:
         repo = repository.find_repo()
@@ -101,6 +122,10 @@ def main():
         help="directory to snapshot (default: current directory)"
     )
     p_write_tree.set_defaults(func=cmd_write_tree)
+
+    p_ls_tree = subparsers.add_parser("ls-tree", help="list the contents of a tree object")
+    p_ls_tree.add_argument("sha", help="tree object hash")
+    p_ls_tree.set_defaults(func=cmd_ls_tree)
 
     # Phase 2 end
 
