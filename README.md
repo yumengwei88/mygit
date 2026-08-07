@@ -16,8 +16,9 @@ a content-addressable key-value store. Three object types (blobs, trees,
 commits) glued together by SHA-1 hashes. This project builds that same process
 bit by bit.
 
-## What's implemented so far (Phase 1)
+## What's implemented so far
 
+**Phase 1 - the object store**
 - `mygit init` — creates a `.mygit/` directory with an object store and a
   `main` branch ref, just like `git init`.
 - `mygit hash-object [-w] <file>` — hashes a file's contents the same way
@@ -30,9 +31,20 @@ The blob hashing is verified against real Git's output (see
 `tests/test_phase1.py`) — hashing `"hello world\n"` produces the exact
 same SHA-1 that `git hash-object` would.
 
+**Phase 2 — trees (directory snapshots)**
+- `mygit write-tree [path]` — recursively snapshots a directory: every
+  file becomes a blob, every subdirectory becomes its own nested tree
+  object, and the whole thing is tied together into one tree object
+  for `path` (default: current directory).
+- `mygit ls-tree <sha>` — lists a tree object's contents (mode, type,
+  hash, name), the same way `git ls-tree` does.
+
+**Note:** real Git stores each entry's hash as raw 20 binary
+bytes to save space. This implementation stores it as plain hex text
+instead, so tree objects are directly human-readable via `cat-file -p`.
+
 ## What's coming next
 
-- **Phase 2**: tree objects (mapping filenames to blobs, for directories)
 - **Phase 3**: commit objects and the `HEAD`/branch pointer chain
 - **Phase 4**: user-facing porcelain commands — `add`, `commit`, `log`,
   `checkout`
