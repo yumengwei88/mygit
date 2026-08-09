@@ -49,3 +49,30 @@ def init(path=None):
         f.write("ref: refs/heads/main\n")
 
     return repo
+
+def get_head_ref(repo: str) -> str:
+    """Return the ref path HEAD currently points to, e.g. 'refs/heads/main'."""
+
+    with open(os.path.join(repo, "HEAD")) as f:
+        content = f.read().strip()
+    _, _, ref = content.partition(" ")
+    return ref
+
+def read_head(repo:str):
+    """Return the commit SHA the current branch points to, or None if
+    there are no commits yet
+    """
+
+    ref_path = os.path.join(repo, get_head_ref(repo))
+    if not os.path.isfile(ref_path):
+        return None
+    with open(ref_path) as f:
+        return f.read().strip()
+
+def update_head(repo: str, commit_sha: str):
+    """Move the current branch to point at a new commit."""
+
+    ref_path = os.path.join(repo, get_head_ref(repo))
+    os.makedirs(os.path.dirname(ref_path), exist_ok=True)
+    with open(ref_path, "w") as f:
+        f.write(commit_sha + "\n")

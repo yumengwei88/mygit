@@ -6,6 +6,7 @@ import sys
 from . import objects
 from . import repository
 from . import tree
+from . import commit
 
 
 def cmd_init(args):
@@ -32,7 +33,6 @@ def cmd_hash_object(args):
     sha = objects.hash_object(data, "blob", repo=repo, write=args.write)
     print(sha)
 
-
 def cmd_ls_tree(args):
     try:
         repo = repository.find_repo()
@@ -52,7 +52,6 @@ def cmd_ls_tree(args):
 
     for entry in tree.parse_tree(content):
         print(f"{entry['mode']} {entry['type']} {entry['sha']}\t{entry['name']}")
-
 
 def cmd_cat_file(args):
     try:
@@ -77,7 +76,7 @@ def cmd_cat_file(args):
         print("error: must specify -t, -s, or -p", file=sys.stderr)
         sys.exit(1)
 
-# Phase 2
+# Phase 2 begins
 def cmd_write_tree(args):
     try:
         repo = repository.find_repo()
@@ -87,6 +86,46 @@ def cmd_write_tree(args):
 
     sha = tree.write_tree(repo, args.path)
     print(sha)
+
+# Phase 2 ends
+# Phase 3 beings
+def cmd_commit_tree(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    sha = commit.write_commit(repo, args.tree, args.message, parent_sha=args.parent)
+    print(sha)
+
+def cmd_update_ref(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    repository.update_head(repo, args.sha)
+
+def cmd_rev_parse(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.ref != "HEAD":
+        print("error: only 'HEAD' is supported right now", file=sys.stderr)
+
+    sha = repository.read_head(repo)
+    if sha is None:
+        print("error: HEAD has no commits yet", file=sys.stderr)
+        sys.exit(1)
+
+    print(sha)
+
+# Phase 3 end
 
 def main():
     parser = argparse.ArgumentParser(prog="mygit", description="A minimal Git implementation")
@@ -128,6 +167,22 @@ def main():
     p_ls_tree.set_defaults(func=cmd_ls_tree)
 
     # Phase 2 end
+    # Phase 3 begins
+    p_commit_tree = subparsers.add_parser("commit-tree", help="create a commit object from a tree")
+    p_commit_tree.add_argument("tree", help="tree object hash to commit")
+    p_commit_tree.add_argument("-m", "--message", required=True, help="commit message")
+    p_commit_tree.add_argument("-p", "-parent", default=None, help="parent commit hash")
+    p_commit_tree.set_defaults(func=cmd_commit_tree)
+
+    p_update_ref = subparsers.add_parser("update-ref", help="move the current branch to point at a commit")
+    p_update_ref.add_argument("sha", help="commit hash to point at the current branch at")
+    p_update_ref.set_defaults(func=cmd_update_ref)
+
+    p_rev_parse = subparsers.add_parser("rev-parse", help="resolve a ref to commit hash")
+    p_rev_parse.add_argument("ref", help="ref to resolve, e.g. HEAD")
+    p_rev_parse.set_defaults(cmd_rev_parse)
+
+    # Phase 3 end
 
     args = parser.parse_args()
     args.func(args)
