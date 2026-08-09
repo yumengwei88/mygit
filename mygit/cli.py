@@ -33,26 +33,6 @@ def cmd_hash_object(args):
     sha = objects.hash_object(data, "blob", repo=repo, write=args.write)
     print(sha)
 
-def cmd_ls_tree(args):
-    try:
-        repo = repository.find_repo()
-    except repository.RepositoryError as e:
-        print(f"error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        obj_type, content = objects.read_object(repo, args.sha)
-    except (FileNotFoundError, ValueError) as e:
-        print(f"error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    if obj_type != "tree":
-        print(f"error: objext {args.sha} is not a tree, it's a {obj_type}", file = sys.stderr)
-        sys.exit(1)
-
-    for entry in tree.parse_tree(content):
-        print(f"{entry['mode']} {entry['type']} {entry['sha']}\t{entry['name']}")
-
 def cmd_cat_file(args):
     try:
         repo = repository.find_repo()
@@ -87,6 +67,26 @@ def cmd_write_tree(args):
     sha = tree.write_tree(repo, args.path)
     print(sha)
 
+def cmd_ls_tree(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        obj_type, content = objects.read_object(repo, args.sha)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if obj_type != "tree":
+        print(f"error: object {args.sha} is not a tree, it's a {obj_type}", file = sys.stderr)
+        sys.exit(1)
+
+    for entry in tree.parse_tree(content):
+        print(f"{entry['mode']} {entry['type']} {entry['sha']}\t{entry['name']}")
+
 # Phase 2 ends
 # Phase 3 beings
 def cmd_commit_tree(args):
@@ -117,6 +117,7 @@ def cmd_rev_parse(args):
 
     if args.ref != "HEAD":
         print("error: only 'HEAD' is supported right now", file=sys.stderr)
+        sys.exit(1)
 
     sha = repository.read_head(repo)
     if sha is None:
@@ -180,7 +181,7 @@ def main():
 
     p_rev_parse = subparsers.add_parser("rev-parse", help="resolve a ref to commit hash")
     p_rev_parse.add_argument("ref", help="ref to resolve, e.g. HEAD")
-    p_rev_parse.set_defaults(cmd_rev_parse)
+    p_rev_parse.set_defaults(func=cmd_rev_parse)
 
     # Phase 3 end
 
