@@ -1,8 +1,7 @@
 # mygit
 
 A minimal imitation of Git, built from scratch to understand how Git actually
-works. This is **Phase 1** of a largerbuild: the content-addressable object
-store.
+works.
 
 ## Why
 
@@ -43,9 +42,22 @@ same SHA-1 that `git hash-object` would.
 bytes to save space. This implementation stores it as plain hex text
 instead, so tree objects are directly human-readable via `cat-file -p`.
 
+**Phase 3 — commits and the HEAD/branch chain**
+- `mygit commit-tree <tree-sha> -m <message> [-p <parent-sha>]` — creates
+  a commit object pointing at a tree snapshot and (optionally) a parent
+  commit. Mirrors real Git's plumbing command of the same name — it does
+  *not* move any branch pointer on its own.
+- `mygit update-ref <commit-sha>` — moves the current branch (whatever
+  `HEAD` points to) forward to a given commit.
+- `mygit rev-parse HEAD` — resolves `HEAD` down to the actual commit
+  hash it currently points at.
+
+**Note:** real Git tracks a separate "author" and "committer" line.
+This implementation tracks one identity, but the underlying concept is
+the same.
+
 ## What's coming next
 
-- **Phase 3**: commit objects and the `HEAD`/branch pointer chain
 - **Phase 4**: user-facing porcelain commands — `add`, `commit`, `log`,
   `checkout`
 - **Phase 5 (stretch)**: `branch`, basic merges, `diff`
@@ -89,6 +101,27 @@ Peek inside `.mygit/objects/` afterward — you'll see the compressed object
 sitting there under a folder named after the first two hash characters,
 exactly like real Git.
 
+Snapshotting a whole directory:
+
+```bash
+mkdir notes && echo "todo stuff" > notes/todo.txt
+TREE_SHA=$(mygit write-tree)
+mygit ls-tree $TREE_SHA
+```
+
+Building a two-commit history by hand:
+
+```bash
+TREE1=$(mygit write-tree)
+COMMIT1=$(mygit commit-tree $TREE1 -m "first commit")
+mygit update-ref $COMMIT1
+
+echo "more work" > another.txt
+TREE2=$(mygit write-tree)
+COMMIT2=$(mygit commit-tree $TREE2 -m "second commit" -p $(mygit rev-parse HEAD))
+mygit update-ref $COMMIT2
+```
+
 ## Running tests
 
 ```bash
@@ -102,10 +135,14 @@ mygit-project/
 ├── mygit/
 │   ├── __init__.py
 │   ├── cli.py            # argparse command wiring
+│   ├── commit.py          # building and reading commit objects
 │   ├── objects.py         # hashing, compression, object read/write
-│   └── repository.py      # init + repo discovery
+│   ├── repository.py      # init + repo discovery + HEAD/branch refs
+│   └── tree.py            # building and reading tree objects
 ├── tests/
-│   └── test_phase1.py
+│   ├── test_phase1.py
+│   ├── test_phase2.py
+│   └── test_phase3.py
 ├── pyproject.toml
 └── README.md
 ```
