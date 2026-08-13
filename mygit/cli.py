@@ -2,12 +2,14 @@
 
 import argparse
 import sys
+import os
+import time
 
 from . import objects
 from . import repository
 from . import tree
 from . import commit
-
+from . import index
 
 def cmd_init(args):
     try:
@@ -127,6 +129,41 @@ def cmd_rev_parse(args):
     print(sha)
 
 # Phase 3 end
+# Phase 4 begins
+def cmd_add(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    for path in args.files:
+        if not os.path.isfile(path):
+            print(f"error: {path} is not a file (directories aren't supported by add)", file=sys.stderr)
+            sys.exit(1)
+
+    index.add(repo, args.files)
+    print(f"staged {len(args.files)} file(s)")
+
+def cmd_commit(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    entries = index.read_index(repo)
+    if not entries:
+        print("error: nothing staged (use 'mygit add <file>' first)", file=sys.stderr)
+        sys.exit(1)
+
+    tree_sha = index.build_tree_from_index(repo, entries)
+    parent_sha = repository.read_head(repo)
+
+    commit_sha = commit.write_commit(repo, tree_sha, args.message, parent_sha=parent_sha)
+    repository.update_head(repo, commit_sha)
+    print(commit_sha)
+# Phase 4 end
 
 def main():
     parser = argparse.ArgumentParser(prog="mygit", description="A minimal Git implementation")
@@ -184,6 +221,15 @@ def main():
     p_rev_parse.set_defaults(func=cmd_rev_parse)
 
     # Phase 3 end
+    # Phase 4 begin
+    p_add = subparsers.add_parser("add", help="stage files for the next commit")
+    p_add.add_argument("files", nargs="+", help="files to stage")
+    p_add.set_defaults(func=cmd_add)
+
+    p_commit = subparsers.add_parser("commit", help="record a new commit from staged files")
+    p_commit.add_argument("-m", "--message", required=True, help="commit message")
+    p_commit.set_defaults(func=cmd_commit)
+    # Phase 4 end
 
     args = parser.parse_args()
     args.func(args)
