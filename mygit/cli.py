@@ -163,6 +163,31 @@ def cmd_commit(args):
     commit_sha = commit.write_commit(repo, tree_sha, args.message, parent_sha=parent_sha)
     repository.update_head(repo, commit_sha)
     print(commit_sha)
+
+def cmd_log(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    sha = repository.read_head(repo)
+    if sha is None:
+        print("no commits yet")
+        return
+
+    while sha:
+        _, content = objects.read_object(repo, sha)
+        parsed = commit.parse_commit(content)
+
+        print(f"commit {sha}")
+        print(f"Author: {parsed['author']}")
+        print(f"Date:   {time.ctime(parsed['timestamp'])}")
+        print()
+        print(f"    {parsed['message']}")
+        print()
+
+        sha = parsed["parent"]
 # Phase 4 end
 
 def main():
@@ -229,6 +254,9 @@ def main():
     p_commit = subparsers.add_parser("commit", help="record a new commit from staged files")
     p_commit.add_argument("-m", "--message", required=True, help="commit message")
     p_commit.set_defaults(func=cmd_commit)
+
+    p_log = subparsers.add_parser("log", help="show commit history")
+    p_log.set_defaults(func=cmd_log)
     # Phase 4 end
 
     args = parser.parse_args()
