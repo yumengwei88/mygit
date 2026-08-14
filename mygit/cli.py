@@ -188,6 +188,30 @@ def cmd_log(args):
         print()
 
         sha = parsed["parent"]
+
+def cmd_checkout(args):
+    try:
+        repo = repository.find_repo()
+    except repository.RepositoryError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        obj_type, content = objects.read_object(repo, args.sha)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if obj_type == "commit":
+        tree_sha = commit.parse_commit(content)["tree"]
+    elif obj_type == "tree":
+        tree_sha = args.sha
+    else:
+        print(f"error: {args.sha} is a {obj_type}, expected a commit or tree", file=sys.stderr)
+        sys.exit(1)
+
+    tree.checkout_tree(repo, tree_sha)
+    print(f"checked out {obj_type} {args.sha}")
 # Phase 4 end
 
 def main():
@@ -257,6 +281,10 @@ def main():
 
     p_log = subparsers.add_parser("log", help="show commit history")
     p_log.set_defaults(func=cmd_log)
+
+    p_checkout = subparsers.add_parser("checkout", help="restore files from a commit or tree")
+    p_checkout.add_argument("sha", help="commit or tree hash to check out")
+    p_checkout.set_defaults(func=cmd_checkout)
     # Phase 4 end
 
     args = parser.parse_args()

@@ -48,3 +48,23 @@ def parse_tree(content: bytes):
         entries.append({"mode": mode, "type": obj_type, "sha": sha, "name": name})
 
     return entries
+
+def checkout_tree(repo: str, tree_sha: str, path: str = "."):
+    """Reconstruct a tree object's contents onto disk at `path`.
+
+    The reverse of write_tree: for each entry, write blobs as real
+    files, and recurse into subdirectories for nested trees.
+    """
+    _, content = objects.read_object(repo, tree_sha)
+
+    for entry in parse_tree(content):
+        full_path = os.path.join(path, entry["name"])
+
+        if entry["type"] == "tree":
+            os.makedirs(full_path, exist_ok=True)
+            checkout_tree(repo, entry["sha"], full_path)
+        else:
+            _, blob_content = objects.read_object(repo, entry["sha"])
+            with open(full_path, "wb") as f:
+                f.write(blob_content)
+
