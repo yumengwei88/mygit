@@ -56,10 +56,26 @@ instead, so tree objects are directly human-readable via `cat-file -p`.
 This implementation tracks one identity, but the underlying concept is
 the same.
 
-## What's coming next
+**Phase 4 — staging area and everyday porcelain commands**
+- `mygit add <file>...` — hashes each file as a blob, writes it to the
+  object store, and records it in the index (`.mygit/index`) keyed by
+  its path relative to the project root.
+- `mygit commit -m <message>` — builds a tree straight from whatever's
+  currently staged in the index, wraps it in a commit object (parented
+  to the current `HEAD`, if any), and moves the branch forward to it.
+  This is what `commit-tree` + `update-ref` do by hand.
+- `mygit log` — walks the commit chain from `HEAD` back through each
+  `parent`, printing the hash, author, date, and message for each one.
+- `mygit checkout <sha>` — restores files to disk from a commit or tree
+  object, recursing into subdirectories as needed.
 
-- **Phase 4**: user-facing porcelain commands — `add`, `commit`, `log`,
-  `checkout`
+**Note:** the index is a flat, plain-text file (`sha path` per line),
+rewritten in full on every `add`, and there's no diffing against what's
+already staged (restaging a path always overwrites its entry). `checkout`
+also doesn't clear files that aren't part of the tree being checked out,
+so it's closer to an overlay than a true `git checkout`.
+
+## What's coming next
 - **Phase 5 (stretch)**: `branch`, basic merges, `diff`
 
 ## Setup (VS Code)
@@ -142,7 +158,8 @@ mygit-project/
 ├── tests/
 │   ├── test_phase1.py
 │   ├── test_phase2.py
-│   └── test_phase3.py
+│   ├── test_phase3.py
+|   └── test_phase4.py
 ├── pyproject.toml
 └── README.md
 ```
